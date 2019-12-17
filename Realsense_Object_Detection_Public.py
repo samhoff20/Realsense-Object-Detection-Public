@@ -12,8 +12,9 @@ import cv2
 ap = argparse.ArgumentParser()
 ap.add_argument("-m", "--model", required=True, help="path to Tensorflow Lite object detection model")
 ap.add_argument("-l", "--labels", required=True, help="path to labels file")
-ap.add_argument("-c", "--confidence", type=float, default=0.3)
-ap.add_argument("-w", "--width", type = int, default = 500)
+ap.add_argument("-c", "--confidence", type=float, default=0.3, help = "Confidence threshold expressed as a decimal")
+ap.add_argument("-w", "--width", type = int, default = 500, help = "Size of image as it's inputed into the model")
+ap.add_argument("-i", "--info", type = int, default = 0, help = "Prints relevent runtime information in the console on startup")
 args = vars(ap.parse_args())
 
 labels={}
@@ -28,12 +29,21 @@ model = DetectionEngine(args["model"])
 print("Initializing Realsense...")
 pipeline = rs.pipeline()
 config = rs.config()
-config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 60)
+depth_resolution_x =640
+depth_resolution_y =480
+color_resolution_x =640
+color_resolution_y =480
+depth_fps =30
+color_fps =60
+config.enable_stream(rs.stream.depth, depth_resolution_x, depth_resolution_y, rs.format.z16, depth_fps) 
+config.enable_stream(rs.stream.color, color_resolution_x, color_resolution_y, rs.format.bgr8, color_fps)
 profile = pipeline.start(config)
 depth_sensor = profile.get_device().first_depth_sensor()
 depth_scale = depth_sensor.get_depth_scale()
 
+if args["info"] > 0:
+    print("Depth Input: ",depth_resolution_x,"x",depth_resolution_y,"at",depth_fps,"fps")
+    print("Color Input: ",color_resolution_x,"x",color_resolution_y,"at",color_fps,"fps")
 
 #align_with = rs.stream.color
 #align = rs.align(align_with)
@@ -57,7 +67,7 @@ while True:
     ##resize image based upon argument and create a copy to annotate and display
     color_image = imutils.resize(color_image, width=args["width"])
     orig = color_image
-    color_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
+    #color_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
     color_image = Image.fromarray(color_image)
 
     ##start a timer for inferencing time and feed the frame into the model  
@@ -105,32 +115,35 @@ while True:
     cv2.imshow('Real Sense Object Detection', orig)
     key = cv2.waitKey(1) & 0xFF
 
-    ##create counter for measuring inference time and frames per second
-    counter += 1
-    if (time.time() - start_time) > x :
-        print("FPS: ", counter / (time.time() - start_time))
-        fps = []
-        fps.append(counter / (time.time() - start_time))
-        inference_time = []
-        inference_time.append(end_inference - start_inference)
-        counter = 0
-        start_time = time.time()
+    if args["info"] > 0:
+        ##create counter for measuring inference time and frames per second
+        counter += 1
+        if (time.time() - start_time) > x:
+            print("FPS: ", counter / (time.time() - start_time))
+            fps = []
+            fps.append(counter / (time.time() - start_time))
+            inference_time = []
+            inference_time.append(end_inference - start_inference)
+            counter = 0
+            start_time = time.time()
 
     if key == ord("q") or key == 27:
         break
 
 ##calculate the average FPS and inference time    
-fps_sum = 0
-for num in fps:
-    fps_sum += num
-fps_average = fps_sum / len(fps)
-print("Average FPS:",fps_average)
+if args["info"] > 0:
+    fps_sum = 0
+    for num in fps:
+        fps_sum += num
+        fps_average = fps_sum / len(fps)
+    print("Average FPS:",fps_average)
 
-inference_sum = 0
-for num in inference_time:
-    inference_sum += num
-inference_average = inference_sum / len(inference_time)
-print("Average Inference Time:",inference_average)
+    inference_sum = 0
+    for num in inference_time:
+        inference_sum += num
+    inference_average = inference_sum / len(inference_time)
+    print("Average Inference Time:",inference_average)   
+
           
 pipeline.stop()
     

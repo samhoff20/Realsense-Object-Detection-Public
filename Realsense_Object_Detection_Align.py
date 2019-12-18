@@ -32,6 +32,7 @@ model = DetectionEngine(args["model"])
 print("Initializing Realsense...")
 pipeline = rs.pipeline()
 config = rs.config()
+# recommended depth resolution from white paper  848x480 for best raw depth performance
 depth_resolution_x =640
 depth_resolution_y =480
 color_resolution_x =640
@@ -48,8 +49,8 @@ if args["info"] > 0:
     print("Depth Input: ",depth_resolution_x,"x",depth_resolution_y,"at",depth_fps,"fps")
     print("Color Input: ",color_resolution_x,"x",color_resolution_y,"at",color_fps,"fps")
 if args["align"] > 0:
-    align_with = rs.stream.color
-    align = rs.align(align_with)
+    align_stream = rs.align(rs.stream.color)
+    
 
 start_time = time.time()
 x = 1 # displays the frame rate every 1 second
@@ -60,10 +61,10 @@ while True:
     frames = pipeline.wait_for_frames() 
     
     if args["align"] > 0:
-        aligned_frames = align.process(frames)
+        aligned_frames = align_stream.process(frames)
 
-    depth_frame = frames.get_depth_frame()
-    color_frame = frames.get_color_frame()
+    depth_frame = aligned_frames.get_depth_frame()
+    color_frame = aligned_frames.get_color_frame()
     if not depth_frame or not color_frame:
         continue
 
@@ -84,6 +85,9 @@ while True:
         keep_aspect_ratio=True, relative_coord=False)
     end_inference = time.time()
     
+    depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
+    depth_colormap = imutils.resize(depth_colormap, width = args["width"])
+
     ##put a bounding box on the result in the copy image
     for r in results:
         bounding_box = r.bounding_box.flatten().astype("int") #try changing r
@@ -91,11 +95,14 @@ while True:
         label = labels[r.label_id]
         cv2.rectangle(orig, (startX, startY), (endX, endY),
                 (0, 255, 0), 2)
+        cv2.rectangle(depth_colormap, (startX, startY), (endX, endY),
+                (255, 255, 255), 2)
         
         ##add a dot to the center of the bounding box
         centerX = int((startX - ((startX - endX)*0.5)))
         centerY = int((startY - ((startY - endY)*0.5)))
         cv2.circle(orig, (centerX, centerY), 1, (0, 255, 0), 2 )
+        cv2.circle(depth_colormap, (centerX, centerY), 1, (255, 255, 255), 2 )
 
         #-------Single Point-----------
         ##calculates depth of the center point of the bounding box
@@ -111,14 +118,16 @@ while True:
         #depth = depth_average * depth_scale
         #print(depth)
         #------------------------------
-
+    
+    
         y = startY - 15 if startY - 15 > 15 else startY + 15
         text = "{}: {:.2f}% {:.3f}".format(label, r.score*100, depth) 
         cv2.putText(orig, text, (startX,y),
             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0),2) #try changing font
+        cv2.putText(depth_colormap, text, (startX,y),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255),2)
     
-    depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
-    depth_colormap = imutils.resize(depth_colormap, width = args["width"])
+    
 
     ##create the window to display the result
     if args["align"] > 0:

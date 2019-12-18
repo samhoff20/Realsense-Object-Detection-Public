@@ -32,6 +32,7 @@ model = DetectionEngine(args["model"])
 print("Initializing Realsense...")
 pipeline = rs.pipeline()
 config = rs.config()
+# recommended depth resolution from white paper  848x480 for best raw depth performance
 depth_resolution_x =640
 depth_resolution_y =480
 color_resolution_x =640
@@ -62,8 +63,8 @@ while True:
     if args["align"] > 0:
         aligned_frames = align_stream.process(frames)
 
-    depth_frame = frames.get_depth_frame()
-    color_frame = frames.get_color_frame()
+    depth_frame = aligned_frames.get_depth_frame()
+    color_frame = aligned_frames.get_color_frame()
     if not depth_frame or not color_frame:
         continue
 

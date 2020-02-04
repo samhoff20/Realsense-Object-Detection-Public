@@ -106,7 +106,7 @@ while True:
 
         #-------Single Point-----------
         ##calculates depth of the center point of the bounding box
-        depth = depth_image[centerX, centerY].astype(float)
+        depth = depth_image[centerY, centerX].astype(float)
         depth = depth * depth_scale
         #------------------------------
         

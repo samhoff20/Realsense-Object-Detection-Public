@@ -91,13 +91,13 @@ while True:
 
         #-------Single Point-----------
         ##calculates depth of the center point of the bounding box
-        depth = depth_image[centerX, centerY].astype(float)
+        depth = depth_image[centerY, centerX].astype(float)
         depth = depth * depth_scale
         #------------------------------
         
         #-----------Average------------
         ##calculates depth of the center point of the bounding box
-        #depth_center = depth_image[centerX, centerY].astype(float)
+        #depth_center = depth_image[centerY, centerX].astype(float)
         #depth_collection = depth_center + depth_image[(centerX+1), (centerY+1)].astype(float) + depth_image[(centerX+1), (centerY-1)].astype(float) + depth_image[(centerX-1), (centerY-1)].astype(float) + depth_image[(centerX-1), (centerY+1)].astype(float)
         #depth_average = depth_collection/5
         #depth = depth_average * depth_scale
